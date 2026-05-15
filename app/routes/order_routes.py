@@ -1,4 +1,4 @@
-"""Роуты для управления заказами клиентов."""
+
 
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
@@ -13,7 +13,7 @@ order_bp = Blueprint('orders', __name__, url_prefix='/api/orders')
 
 
 def _resolve_error_status(error: dict) -> int:
-    """Определяет HTTP-код ответа по тексту ошибки сервиса."""
+
     message = str(error.get('message', '')).lower()
     if 'не найден' in message:
         return 404
@@ -26,7 +26,7 @@ def _resolve_error_status(error: dict) -> int:
 @jwt_required()
 @role_required(UserRole.CLIENT)
 def checkout_order():
-    """Оформление заказа клиентом (передача менеджеру)."""
+
     data = request.get_json() or {}
     items = data.get('items', [])
 
@@ -51,7 +51,7 @@ def checkout_order():
 @order_bp.route('/my', methods=['GET'])
 @jwt_required()
 def get_my_orders():
-    """Список заказов текущего пользователя."""
+
     orders = OrderService.get_orders_by_user(get_jwt_identity())
     return jsonify({
         'orders': OrderSchema(many=True).dump(orders)
@@ -62,7 +62,7 @@ def get_my_orders():
 @jwt_required()
 @cashier_or_higher_required
 def get_orders():
-    """Список заказов для кассира/менеджера/админа."""
+
     status_param = request.args.get('status', 'pending')
 
     if status_param == 'all':
@@ -89,7 +89,7 @@ def get_orders():
 @jwt_required()
 @cashier_or_higher_required
 def approve_order(order_id: int):
-    """Подтверждение заказа сотрудником и создание продажи."""
+
     data = request.get_json(silent=True) or {}
     order, sale, error = OrderService.approve_order(
         order_id=order_id,
@@ -111,7 +111,7 @@ def approve_order(order_id: int):
 @jwt_required()
 @cashier_or_higher_required
 def reject_order(order_id: int):
-    """Отклонение заказа сотрудником."""
+
     data = request.get_json(silent=True) or {}
     order, error = OrderService.reject_order(
         order_id=order_id,
@@ -131,7 +131,7 @@ def reject_order(order_id: int):
 @order_bp.route('/<int:order_id>/cancel', methods=['POST'])
 @jwt_required()
 def cancel_order(order_id: int):
-    """Отмена заказа клиентом или менеджером."""
+
     jwt_claims = get_jwt()
     role = jwt_claims.get('role')
     is_manager_action = role in [UserRole.CASHIER.value, UserRole.MANAGER.value, UserRole.ADMIN.value]

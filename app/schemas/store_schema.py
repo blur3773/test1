@@ -1,10 +1,10 @@
-"""Схемы для книжного магазина."""
+
 
 from marshmallow import Schema, fields, validate
 
 
 class BookSchema(Schema):
-    """Схема книги."""
+
 
     id = fields.Int(dump_only=True)
     title = fields.Str(required=True, validate=validate.Length(max=200))
@@ -13,9 +13,15 @@ class BookSchema(Schema):
     isbn = fields.Str(required=True, validate=validate.Length(max=20))
     publisher = fields.Str(load_default=None, validate=validate.Length(max=100))
     year = fields.Int(load_default=None)
+    publication_place = fields.Str(load_default=None, allow_none=True, validate=validate.Length(max=120))
+    page_count = fields.Int(load_default=None, allow_none=True)
+    weight_grams = fields.Int(load_default=None, allow_none=True)
+    print_run = fields.Int(load_default=None, allow_none=True)
+    genre = fields.Str(load_default=None, allow_none=True, validate=validate.Length(max=255))
     price = fields.Decimal(required=True, places=2)
     description = fields.Str(load_default=None)
     cover_url = fields.Str(dump_only=True, allow_none=True)
+    source_url = fields.Str(load_default=None, allow_none=True, validate=validate.Length(max=500))
     status = fields.Method('get_status', dump_only=True)
     stock_quantity = fields.Int(dump_only=True)
     available_quantity = fields.Int(dump_only=True)
@@ -23,13 +29,13 @@ class BookSchema(Schema):
     updated_at = fields.DateTime(dump_only=True)
 
     def get_status(self, obj):
-        """Сериализует Enum статуса книги в строковое значение."""
+
         status = getattr(obj, 'status', None)
         return status.value if hasattr(status, 'value') else status
 
 
 class BookStockSchema(Schema):
-    """Схема остатков книги."""
+
 
     id = fields.Int(dump_only=True)
     book_id = fields.Int(required=True)
@@ -40,7 +46,7 @@ class BookStockSchema(Schema):
 
 
 class SaleItemSchema(Schema):
-    """Схема позиции продажи."""
+
 
     id = fields.Int(dump_only=True)
     book_id = fields.Int(required=True)
@@ -51,7 +57,7 @@ class SaleItemSchema(Schema):
 
 
 class SaleSchema(Schema):
-    """Схема продажи."""
+
 
     id = fields.Int(dump_only=True)
     cashier_id = fields.Int(required=True)
@@ -65,13 +71,13 @@ class SaleSchema(Schema):
     updated_at = fields.DateTime(dump_only=True)
 
     def get_status(self, obj):
-        """Сериализует Enum статуса продажи в строковое значение."""
+
         status = getattr(obj, 'status', None)
         return status.value if hasattr(status, 'value') else status
 
 
 class OrderItemSchema(Schema):
-    """Схема позиции заказа."""
+
 
     id = fields.Int(dump_only=True)
     book_id = fields.Int(required=True)
@@ -82,7 +88,7 @@ class OrderItemSchema(Schema):
 
 
 class OrderSchema(Schema):
-    """Схема заказа."""
+
 
     id = fields.Int(dump_only=True)
     user_id = fields.Int(dump_only=True)
@@ -100,23 +106,23 @@ class OrderSchema(Schema):
     updated_at = fields.DateTime(dump_only=True)
 
     def get_status(self, obj):
-        """Сериализует Enum статуса заказа в строковое значение."""
+
         status = getattr(obj, 'status', None)
         return status.value if hasattr(status, 'value') else status
 
     def get_user_name(self, obj):
-        """Возвращает имя пользователя заказа."""
+
         user = getattr(obj, 'user', None)
         return getattr(user, 'username', None)
 
     def get_manager_name(self, obj):
-        """Возвращает имя менеджера, обработавшего заказ."""
+
         manager = getattr(obj, 'manager', None)
         return getattr(manager, 'username', None)
 
 
 class ManagerQuestionSchema(Schema):
-    """Схема вопроса клиента менеджеру."""
+
 
     id = fields.Int(dump_only=True)
     user_id = fields.Int(dump_only=True, allow_none=True)
@@ -127,30 +133,30 @@ class ManagerQuestionSchema(Schema):
     email = fields.Email(load_default=None, allow_none=True)
     phone = fields.Str(load_default=None, allow_none=True, validate=validate.Length(max=20))
     topic = fields.Str(load_default=None, allow_none=True, validate=validate.Length(max=200))
-    message = fields.Str(required=True)
+    message = fields.Str(required=True, validate=validate.Length(max=1000))
     status = fields.Method('get_status', dump_only=True)
     manager_comment = fields.Str(load_default=None, allow_none=True)
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
 
     def get_status(self, obj):
-        """Сериализует Enum статуса вопроса в строковое значение."""
+
         status = getattr(obj, 'status', None)
         return status.value if hasattr(status, 'value') else status
 
     def get_user_name(self, obj):
-        """Возвращает имя пользователя, создавшего вопрос."""
+
         user = getattr(obj, 'user', None)
         return getattr(user, 'username', None)
 
     def get_manager_name(self, obj):
-        """Возвращает имя менеджера, обработавшего вопрос."""
+
         manager = getattr(obj, 'manager', None)
         return getattr(manager, 'username', None)
 
 
 class ClientSchema(Schema):
-    """Схема клиента."""
+
 
     id = fields.Int(dump_only=True)
     user_id = fields.Int(load_default=None, allow_none=True)

@@ -1,4 +1,4 @@
-"""Схемы приложения."""
+
 
 from app.schemas.auth_schema import (
     UserSchema,

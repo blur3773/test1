@@ -2,6 +2,8 @@ import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
 import { booksApi } from "../../api/endpoints";
 
+const CATALOG_SEARCH_MAX_LENGTH = 90;
+
 const getErrorMessage = (error, fallback) =>
   error.response?.data?.message || error.response?.data?.errors || fallback;
 
@@ -40,6 +42,8 @@ const booksSlice = createSlice({
   initialState: {
     items: [],
     selectedBook: null,
+    selectedStatus: "idle",
+    selectedError: null,
     status: "idle",
     error: null,
     filters: {
@@ -52,7 +56,12 @@ const booksSlice = createSlice({
       state.filters.status = action.payload;
     },
     setSearchQuery: (state, action) => {
-      state.filters.query = action.payload;
+      state.filters.query = String(action.payload || "").slice(0, CATALOG_SEARCH_MAX_LENGTH);
+    },
+    clearSelectedBook: (state) => {
+      state.selectedBook = null;
+      state.selectedStatus = "idle";
+      state.selectedError = null;
     }
   },
   extraReducers: (builder) => {
@@ -70,11 +79,20 @@ const booksSlice = createSlice({
         state.status = "failed";
         state.error = action.payload || "Ошибка загрузки каталога";
       })
+      .addCase(fetchBookById.pending, (state) => {
+        state.selectedStatus = "loading";
+        state.selectedError = null;
+      })
       .addCase(fetchBookById.fulfilled, (state, action) => {
+        state.selectedStatus = "succeeded";
         state.selectedBook = action.payload;
+      })
+      .addCase(fetchBookById.rejected, (state, action) => {
+        state.selectedStatus = "failed";
+        state.selectedError = action.payload || "Ошибка загрузки книги";
       });
   }
 });
 
-export const { setStatusFilter, setSearchQuery } = booksSlice.actions;
+export const { setStatusFilter, setSearchQuery, clearSelectedBook } = booksSlice.actions;
 export const booksReducer = booksSlice.reducer;

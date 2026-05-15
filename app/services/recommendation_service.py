@@ -1,4 +1,4 @@
-"""Сервис рекомендаций книг."""
+
 
 from typing import List, Dict, Any, Optional
 
@@ -10,23 +10,18 @@ from app.models import Book, BookStatus, Sale, SaleItem, SaleStatus, Client
 
 
 class RecommendationService:
-    """Сервис рекомендаций на основе ML и поведенческих данных."""
+
 
     _recommender = BookRecommender()
 
     @classmethod
     def _get_active_books(cls) -> List[Book]:
-        """Возвращает список активных книг."""
+
         return Book.query.filter(Book.status == BookStatus.ACTIVE).all()
 
     @classmethod
     def _load_completed_interactions(cls) -> List[Dict[str, Any]]:
-        """
-        Загружает обучающие взаимодействия (историю покупок) для ranking-модели.
 
-        Формат:
-            [{'client_id': 1, 'book_id': 10, 'quantity': 2}, ...]
-        """
         rows = (
             db.session.query(Sale.client_id, SaleItem.book_id, SaleItem.quantity)
             .join(SaleItem, SaleItem.sale_id == Sale.id)
@@ -48,7 +43,7 @@ class RecommendationService:
 
     @classmethod
     def _train_ranking_model(cls, all_books: List[Dict[str, Any]]) -> bool:
-        """Обучает ranking-модель на актуальных данных продаж."""
+
         interactions = cls._load_completed_interactions()
         return cls._recommender.fit_ranking_model(
             interactions=interactions,
@@ -57,7 +52,7 @@ class RecommendationService:
 
     @classmethod
     def get_client_id_by_user_id(cls, user_id: int) -> Optional[int]:
-        """Возвращает client_id по user_id, если профиль клиента существует."""
+
         client = Client.query.filter(Client.user_id == user_id).first()
         return client.id if client else None
 
@@ -129,7 +124,7 @@ class RecommendationService:
         if not all_books:
             return []
 
-        # 1) Пытаемся использовать ranking-модель (Gradient Boosting).
+
         cls._train_ranking_model(all_books)
         ranking_recommendations = cls._recommender.recommend_by_client_ranking(
             client_id=client_id,
@@ -140,7 +135,7 @@ class RecommendationService:
         if ranking_recommendations:
             return ranking_recommendations
 
-        # 2) Fallback на текущий content-based TF-IDF.
+
         recommendations = cls._recommender.recommend_by_history(
             purchase_history=purchase_history,
             all_books=all_books,

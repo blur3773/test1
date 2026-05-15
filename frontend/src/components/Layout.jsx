@@ -2,6 +2,7 @@ import { Link, NavLink } from "react-router-dom";
 
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { logoutUser } from "../features/user/userSlice";
+import { getRoleLabel } from "../utils/roleLabels";
 
 const navigationLinks = [
   { to: "/", label: "Главная" },
@@ -18,13 +19,14 @@ function Layout({ children }) {
   );
   const canViewReports = ["manager", "admin"].includes(profile?.role);
   const canProcessOrders = profile?.role === "cashier";
+  const currentYear = new Date().getFullYear();
 
   return (
     <div className="app-shell">
       <header className="app-header">
         <div className="header-main">
           <div className="brand">
-            <div className="brand-badge">КМ</div>
+            <div className="brand-badge">КВ</div>
             <div>
               <p>Интернет-книжный магазин</p>
             </div>
@@ -41,7 +43,9 @@ function Layout({ children }) {
               {profile ? (
                 <>
                   <span className="auth-user-tag">
-                    {profile.username} ({profile.role})
+                    {profile.role === "client"
+                      ? profile.username
+                      : `${profile.username} (${getRoleLabel(profile.role)})`}
                   </span>
                   <NavLink to="/profile" className="auth-link-button">
                     Профиль
@@ -102,6 +106,12 @@ function Layout({ children }) {
       </header>
 
       <main className="page-container">{children}</main>
+      <footer className="app-footer">
+        <div className="app-footer__inner">
+          <p>Книжная вселенная</p>
+          <span>© {currentYear} Интернет-книжный магазин</span>
+        </div>
+      </footer>
     </div>
   );
 }

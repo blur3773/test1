@@ -1,4 +1,4 @@
-"""Модели пользователей."""
+
 
 from datetime import datetime
 from enum import Enum
@@ -8,15 +8,15 @@ from app.extensions import db
 
 
 class UserRole(Enum):
-    """Роли пользователей."""
-    ADMIN = 'admin'       # Полный доступ ко всем функциям
-    MANAGER = 'manager'   # Управление книгами, остатками, продажами, отчётами
-    CASHIER = 'cashier'   # Продажи, возвраты, просмотр каталога
-    CLIENT = 'client'     # Покупатель (только просмотр, редактирование своего профиля)
+
+    ADMIN = 'admin'
+    MANAGER = 'manager'
+    CASHIER = 'cashier'
+    CLIENT = 'client'
 
 
 class User(db.Model):
-    """Модель пользователя."""
+
 
     __tablename__ = 'users'
 
@@ -31,13 +31,13 @@ class User(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     def set_password(self, password):
-        """Устанавливает хэш пароля."""
-        # На части систем Python 3.9 может не быть hashlib.scrypt, поэтому используем
-        # совместимый метод PBKDF2.
+
+
+
         self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
 
     def check_password(self, password):
-        """Проверяет пароль."""
+
         return check_password_hash(self.password_hash, password)
 
     def __repr__(self):

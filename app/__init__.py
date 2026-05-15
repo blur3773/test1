@@ -1,16 +1,20 @@
-"""Создание Flask приложения."""
+
 
 from flask import Flask
 from sqlalchemy import inspect, text
+from logging.handlers import RotatingFileHandler
+import logging
+import os
 from config import config
 from app.extensions import init_extensions
 from app.routes import register_blueprints
 from app.models import User
 from flasgger import Swagger
+from app.utils import log_user_activity, mark_request_start
 
 
 def _ensure_books_cover_column(app: Flask) -> None:
-    """Добавляет колонку cover_url в таблицу books для существующих БД."""
+
     from app.extensions import db
 
     inspector = inspect(db.engine)
@@ -25,13 +29,13 @@ def _ensure_books_cover_column(app: Flask) -> None:
     try:
         db.session.execute(text('ALTER TABLE books ADD COLUMN cover_url VARCHAR(500)'))
         db.session.commit()
-    except Exception as exc:  # pragma: no cover - защитный сценарий для разных БД
+    except Exception as exc:
         db.session.rollback()
         app.logger.warning('Не удалось добавить колонку cover_url: %s', exc)
 
 
 def _ensure_books_title_ru_column(app: Flask) -> None:
-    """Добавляет колонку title_ru в таблицу books для существующих БД."""
+
     from app.extensions import db
 
     inspector = inspect(db.engine)
@@ -46,17 +50,48 @@ def _ensure_books_title_ru_column(app: Flask) -> None:
     try:
         db.session.execute(text('ALTER TABLE books ADD COLUMN title_ru VARCHAR(200)'))
         db.session.commit()
-    except Exception as exc:  # pragma: no cover - защитный сценарий для разных БД
+    except Exception as exc:
         db.session.rollback()
         app.logger.warning('Не удалось добавить колонку title_ru: %s', exc)
 
 
+def _ensure_books_extended_columns(app: Flask) -> None:
+
+    from app.extensions import db
+
+    inspector = inspect(db.engine)
+    table_names = inspector.get_table_names()
+    if 'books' not in table_names:
+        return
+
+    columns = {column['name'] for column in inspector.get_columns('books')}
+    columns_to_add = [
+        ('publication_place', 'VARCHAR(120)'),
+        ('page_count', 'INTEGER'),
+        ('weight_grams', 'INTEGER'),
+        ('print_run', 'INTEGER'),
+        ('genre', 'VARCHAR(255)'),
+        ('source_url', 'VARCHAR(500)'),
+    ]
+
+    for column_name, column_type in columns_to_add:
+        if column_name in columns:
+            continue
+        try:
+            db.session.execute(text(f'ALTER TABLE books ADD COLUMN {column_name} {column_type}'))
+            db.session.commit()
+        except Exception as exc:
+            db.session.rollback()
+            app.logger.warning('Не удалось добавить колонку %s: %s', column_name, exc)
+
+
 def create_app(config_name='development'):
-    """Фабрика приложения."""
+
     app = Flask(__name__)
     app.config.from_object(config[config_name])
+    _configure_audit_loggers(app)
 
-    # Настройка Swagger
+
     app.config['SWAGGER'] = {
         'title': 'Flask Auth API',
         'uiversion': 3,
@@ -67,10 +102,10 @@ def create_app(config_name='development'):
     app.config['SWAGGER_UI_OPERATION_ID'] = True
     app.config['SWAGGER_UI_REQUEST_DURATION'] = True
 
-    # Инициализация расширений
+
     init_extensions(app)
 
-    # Инициализация Swagger
+
     swagger_config = {
         'headers': [],
         'specs': [
@@ -85,7 +120,7 @@ def create_app(config_name='development'):
         'swagger_ui': True,
         'specs_route': '/swagger/',
     }
-    
+
     swagger = Swagger(app, template={
         'info': {
             'title': 'Книжный магазин API',
@@ -246,20 +281,64 @@ def create_app(config_name='development'):
         }
     }, config=swagger_config)
 
-    # Регистрация blueprint'ов
-    register_blueprints(app)
 
-    # Создание директории instance и таблиц БД
+    register_blueprints(app)
+    _register_user_activity_hooks(app)
+
+
     with app.app_context():
-        import os
         from app.extensions import db
-        
-        # Создание директории instance если не существует
+
+
         instance_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'instance')
         os.makedirs(instance_path, exist_ok=True)
-        
+
         db.create_all()
         _ensure_books_cover_column(app)
         _ensure_books_title_ru_column(app)
+        _ensure_books_extended_columns(app)
 
     return app
+
+
+def _configure_audit_loggers(app: Flask) -> None:
+    log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    _ensure_rotating_handler(app, os.path.join(log_dir, "admin_audit.log"))
+    _ensure_rotating_handler(app, os.path.join(log_dir, "user_activity.log"))
+    app.logger.setLevel(logging.INFO)
+
+
+def _ensure_rotating_handler(app: Flask, log_path: str) -> None:
+    target_name = os.path.basename(log_path)
+
+    has_handler = any(
+        isinstance(handler, RotatingFileHandler) and getattr(handler, "baseFilename", "").endswith(target_name)
+        for handler in app.logger.handlers
+    )
+    if has_handler:
+        return
+
+    audit_handler = RotatingFileHandler(
+        log_path,
+        maxBytes=2 * 1024 * 1024,
+        backupCount=3,
+        encoding="utf-8"
+    )
+    audit_handler.setLevel(logging.INFO)
+    audit_handler.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(message)s"))
+    app.logger.addHandler(audit_handler)
+
+
+def _register_user_activity_hooks(app: Flask) -> None:
+    @app.before_request
+    def _before_request_log_marker():
+        mark_request_start()
+
+    @app.after_request
+    def _after_request_user_activity(response):
+        try:
+            log_user_activity(response.status_code)
+        except Exception:
+            pass
+        return response

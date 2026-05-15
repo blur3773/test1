@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { isNewBook, isSpringBestBook } from "../utils/bookPromos";
 
 const formatCurrency = (value) =>
@@ -46,7 +47,7 @@ function BookCard({ book, onAddToCart }) {
 
     timerRef.current = window.setTimeout(() => {
       setIsAdded(false);
-    }, 550);
+    }, 1200);
   };
 
   return (
@@ -89,14 +90,21 @@ function BookCard({ book, onAddToCart }) {
 
       <div className="book-footer">
         <strong>{formatCurrency(book.price)}</strong>
-        <button
-          className={`button card-buy-button ${isAdded ? "is-added" : ""}`}
-          type="button"
-          onClick={onBuyClick}
-        >
-          Купить
-        </button>
+        <div className="book-footer-actions">
+          <Link to={`/books/${book.id}`} className="auth-link-button">
+            Подробнее
+          </Link>
+          <button
+            className={`button card-buy-button ${isAdded ? "is-added" : ""}`}
+            type="button"
+            onClick={onBuyClick}
+          >
+            {isAdded ? "Добавлено" : "Купить"}
+          </button>
+        </div>
       </div>
+
+      {isAdded ? <p className="success-text">Книга добавлена в корзину.</p> : null}
     </article>
   );
 }

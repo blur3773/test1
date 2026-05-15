@@ -1,4 +1,4 @@
-"""Роуты приложения."""
+
 
 from app.routes.auth_routes import auth_bp
 from app.routes.user_routes import user_bp
@@ -12,7 +12,7 @@ from app.routes.question_routes import question_bp
 
 
 def register_blueprints(app):
-    """Регистрация blueprint'ов приложения."""
+
     app.register_blueprint(auth_bp)
     app.register_blueprint(user_bp)
     app.register_blueprint(book_bp)

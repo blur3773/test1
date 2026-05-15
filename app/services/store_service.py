@@ -1,7 +1,8 @@
-"""Сервис для управления книжным магазином."""
+
 
 from datetime import datetime
 from typing import List, Tuple, Optional
+import re
 from app.models.store import (
     Book,
     BookStock,
@@ -21,12 +22,39 @@ from app.extensions import db
 from app.services.book_cover_service import BookCoverService
 
 
+_RU_PHONE_PATTERN = re.compile(r"^(?:\+7|7|8)?\d{10}$")
+
+
+def _normalize_text(value: Optional[str]) -> str:
+    return (value or "").strip()
+
+
+def _format_ru_phone(value: Optional[str]) -> Optional[str]:
+    normalized_value = _normalize_text(value)
+    if not normalized_value:
+        return None
+
+    digits = re.sub(r"\D", "", normalized_value)
+    if len(digits) == 10:
+        return f"+7{digits}"
+    if len(digits) == 11 and digits[0] in {"7", "8"}:
+        return f"+7{digits[1:]}"
+    return None
+
+
+def _is_valid_ru_phone(value: Optional[str]) -> bool:
+    normalized_value = _normalize_text(value)
+    if not normalized_value:
+        return True
+    return bool(_RU_PHONE_PATTERN.fullmatch(re.sub(r"\s+", "", normalized_value))) or bool(_format_ru_phone(value))
+
+
 class BookService:
-    """Сервис для управления книгами."""
+
 
     @staticmethod
     def get_all_books(status: Optional[BookStatus] = None) -> List[Book]:
-        """Получает все книги, опционально фильтруя по статусу."""
+
         query = Book.query
         if status:
             query = query.filter(Book.status == status)
@@ -34,43 +62,39 @@ class BookService:
 
     @staticmethod
     def get_book_by_id(book_id: int) -> Optional[Book]:
-        """Получает книгу по ID."""
+
         return Book.query.get(book_id)
 
     @staticmethod
     def get_book_by_isbn(isbn: str) -> Optional[Book]:
-        """Получает книгу по ISBN."""
+
         return Book.query.filter(Book.isbn == isbn).first()
 
     @staticmethod
     def search_books(query: str) -> List[Book]:
-        """
-        Ищет книги по названию, автору или ISBN.
-        - Регистронезависимый поиск
-        - Буквы 'е' и 'ё' считаются эквивалентными
-        """
-        # Нормализуем поисковый запрос: заменяем ё на е и приводим к нижнему регистру
+
+
         normalized_query = query.lower().replace('ё', 'е')
-        
-        # Получаем все активные книги
+
+
         books = Book.query.filter(Book.status == BookStatus.ACTIVE).all()
-        
-        # Фильтруем в Python
+
+
         results = []
         for book in books:
-            # Нормализуем поля книги
+
             normalized_title = book.title.lower().replace('ё', 'е')
             normalized_title_ru = (book.title_ru or '').lower().replace('ё', 'е')
             normalized_author = book.author.lower().replace('ё', 'е')
             normalized_isbn = book.isbn.lower().replace('ё', 'е')
-            
-            # Проверяем совпадение
-            if (normalized_query in normalized_title or 
+
+
+            if (normalized_query in normalized_title or
                 normalized_query in normalized_title_ru or
-                normalized_query in normalized_author or 
+                normalized_query in normalized_author or
                 normalized_query in normalized_isbn):
                 results.append(book)
-        
+
         return results
 
     @staticmethod
@@ -82,15 +106,16 @@ class BookService:
         title_ru: Optional[str] = None,
         publisher: Optional[str] = None,
         year: Optional[int] = None,
+        publication_place: Optional[str] = None,
+        page_count: Optional[int] = None,
+        weight_grams: Optional[int] = None,
+        print_run: Optional[int] = None,
+        genre: Optional[str] = None,
         description: Optional[str] = None,
+        source_url: Optional[str] = None,
         stock_quantity: int = 0
     ) -> Tuple[Optional[Book], Optional[dict]]:
-        """
-        Создаёт новую книгу.
 
-        Returns:
-            Кортеж (книга, ошибка)
-        """
         existing_book = Book.query.filter(Book.isbn == isbn).first()
         if existing_book:
             return None, {'message': 'Книга с таким ISBN уже существует'}
@@ -109,8 +134,14 @@ class BookService:
             price=price,
             publisher=publisher,
             year=year,
+            publication_place=publication_place,
+            page_count=page_count,
+            weight_grams=weight_grams,
+            print_run=print_run,
+            genre=genre,
             description=description,
             cover_url=cover_url,
+            source_url=source_url,
             status=BookStatus.ACTIVE
         )
 
@@ -118,7 +149,7 @@ class BookService:
             db.session.add(book)
             db.session.flush()
 
-            # Создаём запись об остатках
+
             stock = BookStock(book_id=book.id, quantity=stock_quantity, reserved=0)
             db.session.add(stock)
             db.session.commit()
@@ -138,19 +169,20 @@ class BookService:
         price: Optional[float] = None,
         publisher: Optional[str] = None,
         year: Optional[int] = None,
-        description: Optional[str] = None
+        publication_place: Optional[str] = None,
+        page_count: Optional[int] = None,
+        weight_grams: Optional[int] = None,
+        print_run: Optional[int] = None,
+        genre: Optional[str] = None,
+        description: Optional[str] = None,
+        source_url: Optional[str] = None
     ) -> Tuple[Optional[Book], Optional[dict]]:
-        """
-        Обновляет данные книги.
 
-        Returns:
-            Кортеж (книга, ошибка)
-        """
         book = Book.query.get(book_id)
         if not book:
             return None, {'message': 'Книга не найдена'}
 
-        # Проверка уникальности ISBN
+
         if isbn and isbn != book.isbn:
             existing = Book.query.filter(Book.isbn == isbn).first()
             if existing:
@@ -171,12 +203,24 @@ class BookService:
                 book.isbn = isbn
             if price is not None:
                 book.price = price
-            if publisher:
+            if publisher is not None:
                 book.publisher = publisher
-            if year:
+            if year is not None:
                 book.year = year
-            if description:
+            if publication_place is not None:
+                book.publication_place = publication_place
+            if page_count is not None:
+                book.page_count = page_count
+            if weight_grams is not None:
+                book.weight_grams = weight_grams
+            if print_run is not None:
+                book.print_run = print_run
+            if genre is not None:
+                book.genre = genre
+            if description is not None:
                 book.description = description
+            if source_url is not None:
+                book.source_url = source_url
 
             should_refresh_cover = bool(title or author or isbn or not book.cover_url)
             if should_refresh_cover:
@@ -198,13 +242,7 @@ class BookService:
 
     @staticmethod
     def archive_book(book_id: int) -> Tuple[Optional[Book], Optional[dict]]:
-        """
-        Архивирует книгу (мягкое удаление).
-        Только администратор может это делать.
 
-        Returns:
-            Кортеж (книга, ошибка)
-        """
         book = Book.query.get(book_id)
         if not book:
             return None, {'message': 'Книга не найдена'}
@@ -221,13 +259,7 @@ class BookService:
 
     @staticmethod
     def restore_book(book_id: int) -> Tuple[Optional[Book], Optional[dict]]:
-        """
-        Восстанавливает книгу из архива.
-        Только администратор может это делать.
 
-        Returns:
-            Кортеж (книга, ошибка)
-        """
         book = Book.query.get(book_id)
         if not book:
             return None, {'message': 'Книга не найдена'}
@@ -244,21 +276,16 @@ class BookService:
 
 
 class StockService:
-    """Сервис для управления остатками."""
+
 
     @staticmethod
     def get_stock(book_id: int) -> Optional[BookStock]:
-        """Получает остатки книги."""
+
         return BookStock.query.filter(BookStock.book_id == book_id).first()
 
     @staticmethod
     def update_stock(book_id: int, quantity: int) -> Tuple[Optional[BookStock], Optional[dict]]:
-        """
-        Обновляет количество книг на складе (приёмка товара).
 
-        Returns:
-            Кортеж (остатки, ошибка)
-        """
         book = Book.query.get(book_id)
         if not book:
             return None, {'message': 'Книга не найдена'}
@@ -279,12 +306,7 @@ class StockService:
 
     @staticmethod
     def adjust_stock(book_id: int, quantity_change: int) -> Tuple[Optional[BookStock], Optional[dict]]:
-        """
-        Корректирует остатки (добавляет или вычитает количество).
 
-        Returns:
-            Кортеж (остатки, ошибка)
-        """
         book = Book.query.get(book_id)
         if not book:
             return None, {'message': 'Книга не найдена'}
@@ -307,12 +329,7 @@ class StockService:
 
     @staticmethod
     def reserve_stock(book_id: int, quantity: int) -> Tuple[Optional[BookStock], Optional[dict]]:
-        """
-        Резервирует книги (уменьшает доступное количество).
 
-        Returns:
-            Кортеж (остатки, ошибка)
-        """
         stock = BookStock.query.filter(BookStock.book_id == book_id).first()
         if not stock:
             return None, {'message': 'Остатки не найдены'}
@@ -332,12 +349,7 @@ class StockService:
 
     @staticmethod
     def release_reservation(book_id: int, quantity: int) -> Tuple[Optional[BookStock], Optional[dict]]:
-        """
-        Снимает резерв с книг.
 
-        Returns:
-            Кортеж (остатки, ошибка)
-        """
         stock = BookStock.query.filter(BookStock.book_id == book_id).first()
         if not stock:
             return None, {'message': 'Остатки не найдены'}
@@ -354,7 +366,7 @@ class StockService:
 
 
 class SaleService:
-    """Сервис для управления продажами."""
+
 
     @staticmethod
     def create_sale(
@@ -362,17 +374,7 @@ class SaleService:
         items: List[dict],
         client_id: Optional[int] = None
     ) -> Tuple[Optional[Sale], Optional[dict]]:
-        """
-        Создаёт новую продажу.
 
-        Args:
-            cashier_id: ID кассира
-            items: Список товаров [{'book_id': 1, 'quantity': 2}, ...]
-            client_id: ID клиента (опционально)
-
-        Returns:
-            Кортеж (продажа, ошибка)
-        """
         if not items:
             return None, {'message': 'Список товаров пуст'}
 
@@ -407,7 +409,7 @@ class SaleService:
                     db.session.rollback()
                     return None, {'message': f'Недостаточно книг на складе: {book.title}'}
 
-                # Обновляем остатки
+
                 stock.quantity -= quantity
                 stock.updated_at = datetime.utcnow()
 
@@ -434,22 +436,17 @@ class SaleService:
 
     @staticmethod
     def get_sale_by_id(sale_id: int) -> Optional[Sale]:
-        """Получает продажу по ID."""
+
         return Sale.query.get(sale_id)
 
     @staticmethod
     def get_all_sales() -> List[Sale]:
-        """Получает все продажи."""
+
         return Sale.query.order_by(Sale.created_at.desc()).all()
 
     @staticmethod
     def return_sale(sale_id: int) -> Tuple[Optional[Sale], Optional[dict]]:
-        """
-        Оформляет возврат продажи.
 
-        Returns:
-            Кортеж (продажа, ошибка)
-        """
         sale = Sale.query.get(sale_id)
         if not sale:
             return None, {'message': 'Продажа не найдена'}
@@ -461,7 +458,7 @@ class SaleService:
             return None, {'message': 'Продажа отменена'}
 
         try:
-            # Возвращаем товары на склад
+
             for item in sale.items:
                 stock = BookStock.query.filter(BookStock.book_id == item.book_id).first()
                 if stock:
@@ -479,12 +476,7 @@ class SaleService:
 
     @staticmethod
     def cancel_sale(sale_id: int) -> Tuple[Optional[Sale], Optional[dict]]:
-        """
-        Отменяет продажу.
 
-        Returns:
-            Кортеж (продажа, ошибка)
-        """
         sale = Sale.query.get(sale_id)
         if not sale:
             return None, {'message': 'Продажа не найдена'}
@@ -496,7 +488,7 @@ class SaleService:
             return None, {'message': 'Продажа уже отменена'}
 
         try:
-            # Возвращаем товары на склад
+
             for item in sale.items:
                 stock = BookStock.query.filter(BookStock.book_id == item.book_id).first()
                 if stock:
@@ -514,7 +506,7 @@ class SaleService:
 
 
 class OrderService:
-    """Сервис для управления клиентскими заказами."""
+
 
     @staticmethod
     def create_order(
@@ -522,12 +514,7 @@ class OrderService:
         items: List[dict],
         customer_comment: Optional[str] = None
     ) -> Tuple[Optional[Order], Optional[dict]]:
-        """
-        Создаёт новый заказ клиента и резервирует остатки.
 
-        Returns:
-            Кортеж (заказ, ошибка)
-        """
         if not items:
             return None, {'message': 'Список товаров пуст'}
 
@@ -593,7 +580,7 @@ class OrderService:
 
     @staticmethod
     def get_orders(status: Optional[OrderStatus] = None) -> List[Order]:
-        """Получает все заказы, опционально фильтруя по статусу."""
+
         query = Order.query
         if status:
             query = query.filter(Order.status == status)
@@ -601,17 +588,17 @@ class OrderService:
 
     @staticmethod
     def get_orders_by_user(user_id: int) -> List[Order]:
-        """Получает заказы конкретного пользователя."""
+
         return Order.query.filter(Order.user_id == user_id).order_by(Order.created_at.desc()).all()
 
     @staticmethod
     def get_order_by_id(order_id: int) -> Optional[Order]:
-        """Получает заказ по ID."""
+
         return Order.query.get(order_id)
 
     @staticmethod
     def _release_order_reservations(order: Order) -> None:
-        """Освобождает резерв, созданный при оформлении заказа."""
+
         for item in order.items:
             stock = BookStock.query.filter(BookStock.book_id == item.book_id).first()
             if not stock:
@@ -625,12 +612,7 @@ class OrderService:
         manager_id: int,
         manager_comment: Optional[str] = None
     ) -> Tuple[Optional[Order], Optional[Sale], Optional[dict]]:
-        """
-        Подтверждает заказ менеджером и оформляет продажу.
 
-        Returns:
-            Кортеж (заказ, продажа, ошибка)
-        """
         order = Order.query.get(order_id)
         if not order:
             return None, None, {'message': 'Заказ не найден'}
@@ -691,12 +673,7 @@ class OrderService:
         manager_id: int,
         manager_comment: Optional[str] = None
     ) -> Tuple[Optional[Order], Optional[dict]]:
-        """
-        Отклоняет заказ менеджером и снимает резерв.
 
-        Returns:
-            Кортеж (заказ, ошибка)
-        """
         order = Order.query.get(order_id)
         if not order:
             return None, {'message': 'Заказ не найден'}
@@ -724,12 +701,7 @@ class OrderService:
         actor_user_id: int,
         is_manager_action: bool = False
     ) -> Tuple[Optional[Order], Optional[dict]]:
-        """
-        Отменяет заказ (клиентом или менеджером) и освобождает резерв.
 
-        Returns:
-            Кортеж (заказ, ошибка)
-        """
         order = Order.query.get(order_id)
         if not order:
             return None, {'message': 'Заказ не найден'}
@@ -755,21 +727,21 @@ class OrderService:
 
 
 class ClientService:
-    """Сервис для управления клиентами."""
+
 
     @staticmethod
     def get_all_clients() -> List[Client]:
-        """Получает всех клиентов."""
+
         return Client.query.order_by(Client.last_name).all()
 
     @staticmethod
     def get_client_by_id(client_id: int) -> Optional[Client]:
-        """Получает клиента по ID."""
+
         return Client.query.get(client_id)
 
     @staticmethod
     def get_client_by_user_id(user_id: int) -> Optional[Client]:
-        """Получает клиента по ID пользователя."""
+
         return Client.query.filter(Client.user_id == user_id).first()
 
     @staticmethod
@@ -781,24 +753,43 @@ class ClientService:
         email: Optional[str] = None,
         user_id: Optional[int] = None
     ) -> Tuple[Optional[Client], Optional[dict]]:
-        """
-        Создаёт нового клиента.
 
-        Returns:
-            Кортеж (клиент, ошибка)
-        """
-        # Проверка: если user_id указан, проверяем, нет ли уже клиента
+        normalized_first_name = _normalize_text(first_name)
+        normalized_last_name = _normalize_text(last_name)
+        normalized_middle_name = _normalize_text(middle_name) or None
+        normalized_email = _normalize_text(email) or None
+        normalized_phone = _normalize_text(phone) or None
+
+        if not normalized_first_name or not normalized_last_name:
+            return None, {'message': 'Имя и фамилия обязательны'}
+
+        if len(normalized_first_name) > 50 or len(normalized_last_name) > 50:
+            return None, {'message': 'Имя и фамилия не должны превышать 50 символов'}
+
+        if normalized_middle_name and len(normalized_middle_name) > 50:
+            return None, {'message': 'Отчество не должно превышать 50 символов'}
+
+        if normalized_email and len(normalized_email) > 120:
+            return None, {'message': 'Email не должен превышать 120 символов'}
+
+        if normalized_phone and not _is_valid_ru_phone(normalized_phone):
+            return None, {'message': 'Некорректный номер телефона'}
+
+        formatted_phone = _format_ru_phone(normalized_phone)
+        if normalized_phone and not formatted_phone:
+            return None, {'message': 'Некорректный номер телефона'}
+
         if user_id:
             existing = Client.query.filter(Client.user_id == user_id).first()
             if existing:
                 return None, {'message': 'Клиент с таким пользователем уже существует'}
 
         client = Client(
-            first_name=first_name,
-            last_name=last_name,
-            middle_name=middle_name,
-            phone=phone,
-            email=email,
+            first_name=normalized_first_name,
+            last_name=normalized_last_name,
+            middle_name=normalized_middle_name,
+            phone=formatted_phone,
+            email=normalized_email,
             user_id=user_id
         )
 
@@ -819,27 +810,45 @@ class ClientService:
         phone: Optional[str] = None,
         email: Optional[str] = None
     ) -> Tuple[Optional[Client], Optional[dict]]:
-        """
-        Обновляет данные клиента.
 
-        Returns:
-            Кортеж (клиент, ошибка)
-        """
         client = Client.query.get(client_id)
         if not client:
             return None, {'message': 'Клиент не найден'}
 
         try:
-            if first_name:
-                client.first_name = first_name
-            if last_name:
-                client.last_name = last_name
+            if first_name is not None:
+                normalized_first_name = _normalize_text(first_name)
+                if not normalized_first_name:
+                    return None, {'message': 'Имя не может быть пустым'}
+                if len(normalized_first_name) > 50:
+                    return None, {'message': 'Имя не должно превышать 50 символов'}
+                client.first_name = normalized_first_name
+            if last_name is not None:
+                normalized_last_name = _normalize_text(last_name)
+                if not normalized_last_name:
+                    return None, {'message': 'Фамилия не может быть пустой'}
+                if len(normalized_last_name) > 50:
+                    return None, {'message': 'Фамилия не должна превышать 50 символов'}
+                client.last_name = normalized_last_name
             if middle_name is not None:
-                client.middle_name = middle_name
-            if phone:
-                client.phone = phone
-            if email:
-                client.email = email
+                normalized_middle_name = _normalize_text(middle_name)
+                if normalized_middle_name and len(normalized_middle_name) > 50:
+                    return None, {'message': 'Отчество не должно превышать 50 символов'}
+                client.middle_name = normalized_middle_name or None
+            if phone is not None:
+                normalized_phone = _normalize_text(phone)
+                if normalized_phone:
+                    formatted_phone = _format_ru_phone(normalized_phone)
+                    if not formatted_phone:
+                        return None, {'message': 'Некорректный номер телефона'}
+                    client.phone = formatted_phone
+                else:
+                    client.phone = None
+            if email is not None:
+                normalized_email = _normalize_text(email)
+                if normalized_email and len(normalized_email) > 120:
+                    return None, {'message': 'Email не должен превышать 120 символов'}
+                client.email = normalized_email or None
 
             client.updated_at = datetime.utcnow()
             db.session.commit()
@@ -851,12 +860,7 @@ class ClientService:
 
     @staticmethod
     def delete_client(client_id: int) -> Tuple[bool, Optional[dict]]:
-        """
-        Удаляет клиента.
 
-        Returns:
-            Кортеж (успех, ошибка)
-        """
         client = Client.query.get(client_id)
         if not client:
             return False, {'message': 'Клиент не найден'}
@@ -871,7 +875,7 @@ class ClientService:
 
 
 class QuestionService:
-    """Сервис для обработки вопросов клиентов менеджеру."""
+
 
     @staticmethod
     def create_question(
@@ -882,23 +886,20 @@ class QuestionService:
         topic: Optional[str] = None,
         user_id: Optional[int] = None
     ) -> Tuple[Optional[ManagerQuestion], Optional[dict]]:
-        """
-        Создаёт вопрос клиента.
 
-        Returns:
-            Кортеж (вопрос, ошибка)
-        """
-        normalized_message = (message or '').strip()
+        normalized_message = _normalize_text(message)
         if not normalized_message:
             return None, {'message': 'Поле message обязательно'}
+        if len(normalized_message) > 1000:
+            return None, {'message': 'Сообщение не должно превышать 1000 символов'}
 
         user = User.query.get(user_id) if user_id else None
         client = Client.query.filter(Client.user_id == user_id).first() if user_id else None
 
-        normalized_name = (name or '').strip()
-        normalized_email = (email or '').strip()
-        normalized_phone = (phone or '').strip()
-        normalized_topic = (topic or '').strip()
+        normalized_name = _normalize_text(name)
+        normalized_email = _normalize_text(email)
+        normalized_phone = _normalize_text(phone)
+        normalized_topic = _normalize_text(topic)
 
         if not normalized_name and user:
             normalized_name = user.username
@@ -911,15 +912,29 @@ class QuestionService:
 
         if not normalized_name:
             return None, {'message': 'Укажите имя'}
+        if len(normalized_name) > 120:
+            return None, {'message': 'Имя не должно превышать 120 символов'}
+
+        if normalized_topic and len(normalized_topic) > 200:
+            return None, {'message': 'Тема не должна превышать 200 символов'}
+
+        if normalized_email and len(normalized_email) > 120:
+            return None, {'message': 'Email не должен превышать 120 символов'}
 
         if not normalized_email and not normalized_phone:
             return None, {'message': 'Укажите email или телефон для обратной связи'}
+
+        formatted_phone = None
+        if normalized_phone:
+            formatted_phone = _format_ru_phone(normalized_phone)
+            if not formatted_phone:
+                return None, {'message': 'Некорректный номер телефона'}
 
         question = ManagerQuestion(
             user_id=user_id,
             name=normalized_name,
             email=normalized_email or None,
-            phone=normalized_phone or None,
+            phone=formatted_phone,
             topic=normalized_topic or None,
             message=normalized_message,
             status=QuestionStatus.NEW
@@ -935,7 +950,7 @@ class QuestionService:
 
     @staticmethod
     def get_questions(status: Optional[QuestionStatus] = None) -> List[ManagerQuestion]:
-        """Возвращает список вопросов клиентов."""
+
         query = ManagerQuestion.query
         if status:
             query = query.filter(ManagerQuestion.status == status)

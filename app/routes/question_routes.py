@@ -1,4 +1,4 @@
-"""Роуты для вопросов клиентов менеджеру."""
+
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -15,7 +15,7 @@ question_bp = Blueprint('questions', __name__, url_prefix='/api/questions')
 @question_bp.route('', methods=['POST'])
 @jwt_required(optional=True)
 def create_question():
-    """Отправить вопрос менеджеру."""
+
     data = request.get_json(silent=True) or {}
 
     question, error = QuestionService.create_question(
@@ -40,7 +40,7 @@ def create_question():
 @jwt_required()
 @manager_or_admin_required
 def list_questions():
-    """Получить список вопросов клиентов для менеджера/админа."""
+
     status_param = request.args.get('status', 'new')
 
     if status_param == 'all':

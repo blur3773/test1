@@ -43,6 +43,9 @@ export const recommendationsApi = {
 };
 
 export const clientApi = {
+  getAll: () => api.get("/clients"),
+  create: (payload) => api.post("/clients", payload),
+  updateById: (clientId, payload) => api.put(`/clients/${clientId}`, payload),
   getMyProfile: () => api.get("/clients/me"),
   updateMyProfile: (payload) => api.put("/clients/me", payload)
 };
@@ -50,4 +53,13 @@ export const clientApi = {
 export const questionsApi = {
   create: (payload) => api.post("/questions", payload),
   getAll: (status = "new") => api.get("/questions", { params: { status } })
+};
+
+export const usersApi = {
+  getAll: () => api.get("/users"),
+  updateRole: (userId, role) => api.put(`/users/${userId}/role`, { role }),
+  activate: (userId) => api.post(`/users/${userId}/activate`),
+  deactivate: (userId) => api.post(`/users/${userId}/deactivate`),
+  remove: (userId) => api.delete(`/users/${userId}`),
+  getActivityLogs: (limit = 300) => api.get("/users/activity-logs", { params: { limit } })
 };

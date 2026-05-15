@@ -1,4 +1,4 @@
-"""Сервис для автоматического поиска обложек книг."""
+
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from urllib.request import Request, urlopen
 
 
 class BookCoverService:
-    """Ищет URL обложки книги по ISBN или названию/автору."""
+
 
     REQUEST_TIMEOUT_SECONDS = 1.8
     USER_AGENT = 'BookFlowStore/1.0 (+https://bookflow.local)'
@@ -23,15 +23,7 @@ class BookCoverService:
         author: Optional[str],
         isbn: Optional[str] = None
     ) -> Optional[str]:
-        """
-        Подбирает URL обложки.
 
-        Порядок:
-        1. OpenLibrary по ISBN
-        2. Google Books по ISBN
-        3. Google Books по title+author
-        4. OpenLibrary search по title+author
-        """
         normalized_isbn = cls._normalize_isbn(isbn)
 
         if normalized_isbn:
@@ -59,7 +51,7 @@ class BookCoverService:
 
     @staticmethod
     def _normalize_isbn(isbn: Optional[str]) -> Optional[str]:
-        """Удаляет разделители и оставляет ISBN-символы."""
+
         if not isbn:
             return None
 

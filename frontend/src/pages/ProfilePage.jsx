@@ -1,21 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import { useAppDispatch, useAppSelector } from "../app/hooks";
-import { fetchMyClientProfile, updateMyClientProfile } from "../features/user/userSlice";
-
-const emptyForm = {
-  first_name: "",
-  last_name: "",
-  middle_name: "",
-  phone: "",
-  email: ""
-};
+import { fetchMyClientProfile } from "../features/user/userSlice";
+import { getRoleLabel } from "../utils/roleLabels";
 
 function ProfilePage() {
   const dispatch = useAppDispatch();
   const { profile, clientProfile, profileStatus, profileError } = useAppSelector((state) => state.user);
-  const [form, setForm] = useState(emptyForm);
-  const [message, setMessage] = useState("");
 
   useEffect(() => {
     if (profile) {
@@ -23,27 +14,11 @@ function ProfilePage() {
     }
   }, [dispatch, profile]);
 
-  useEffect(() => {
-    if (clientProfile) {
-      setForm({
-        first_name: clientProfile.first_name || "",
-        last_name: clientProfile.last_name || "",
-        middle_name: clientProfile.middle_name || "",
-        phone: clientProfile.phone || "",
-        email: clientProfile.email || ""
-      });
-    }
-  }, [clientProfile]);
-
-  const onSubmit = async (event) => {
-    event.preventDefault();
-    try {
-      await dispatch(updateMyClientProfile(form)).unwrap();
-      setMessage("Профиль обновлён.");
-    } catch {
-      setMessage("Обновить профиль не удалось.");
-    }
-  };
+  const displayLastName = clientProfile?.last_name || profile?.last_name || "";
+  const displayFirstName = clientProfile?.first_name || profile?.first_name || "";
+  const displayMiddleName = clientProfile?.middle_name || "";
+  const displayFio = [displayLastName, displayFirstName, displayMiddleName].filter(Boolean).join(" ") || "Не заполнено";
+  const displayPhone = clientProfile?.phone || "Не указан";
 
   if (!profile) {
     return (
@@ -68,52 +43,20 @@ function ProfilePage() {
         </article>
         <article>
           <p className="muted">Роль</p>
-          <strong>{profile.role}</strong>
+          <strong>{getRoleLabel(profile.role)}</strong>
+        </article>
+        <article>
+          <p className="muted">ФИО</p>
+          <strong>{displayFio}</strong>
+        </article>
+        <article>
+          <p className="muted">Телефон</p>
+          <strong>{displayPhone}</strong>
         </article>
       </div>
 
-      <h3>Профиль клиента (`/api/clients/me`)</h3>
       {profileStatus === "loading" ? <p className="muted">Загружаем данные...</p> : null}
       {profileError ? <p className="error-text">{String(profileError)}</p> : null}
-
-      <form className="profile-form" onSubmit={onSubmit}>
-        <input
-          className="input"
-          placeholder="Имя"
-          value={form.first_name}
-          onChange={(event) => setForm((prev) => ({ ...prev, first_name: event.target.value }))}
-        />
-        <input
-          className="input"
-          placeholder="Фамилия"
-          value={form.last_name}
-          onChange={(event) => setForm((prev) => ({ ...prev, last_name: event.target.value }))}
-        />
-        <input
-          className="input"
-          placeholder="Отчество"
-          value={form.middle_name}
-          onChange={(event) => setForm((prev) => ({ ...prev, middle_name: event.target.value }))}
-        />
-        <input
-          className="input"
-          placeholder="Телефон"
-          value={form.phone}
-          onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
-        />
-        <input
-          className="input"
-          type="email"
-          placeholder="Email клиента"
-          value={form.email}
-          onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-        />
-        <button className="button" type="submit">
-          Сохранить профиль
-        </button>
-      </form>
-
-      {message ? <p className="success-text">{message}</p> : null}
     </section>
   );
 }

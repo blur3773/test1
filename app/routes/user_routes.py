@@ -1,11 +1,13 @@
-"""Роуты для управления пользователями (только для администратора)."""
+
 
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
+import os
 from app.models.user import User, UserRole
 from app.schemas import UserSchema
 from app.services import AuthService
 from app.decorators import admin_required
+from app.utils import log_admin_action
 
 user_bp = Blueprint('users', __name__, url_prefix='/api/users')
 
@@ -14,34 +16,9 @@ user_bp = Blueprint('users', __name__, url_prefix='/api/users')
 @jwt_required()
 @admin_required
 def get_all_users():
-    """
-    Список всех пользователей (администратор)
 
-    ---
-    tags:
-      - Users
-    summary: Список всех пользователей
-    description: Возвращает список всех зарегистрированных пользователей
-    security:
-      - BearerAuth: 0
-    responses:
-      200:
-        description: Список пользователей
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                users:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/User'
-      401:
-        description: Токен не предоставлен или недействителен
-      403:
-        description: Недостаточно прав
-    """
     users = AuthService.get_all_users()
+    log_admin_action("users_list", f"count={len(users)}")
     return jsonify({
         'users': UserSchema(many=True).dump(users)
     }), 200
@@ -51,42 +28,12 @@ def get_all_users():
 @jwt_required()
 @admin_required
 def get_user(user_id: int):
-    """
-    Данные пользователя по ID (администратор)
 
-    ---
-    tags:
-      - Users
-    summary: Данные пользователя по ID
-    description: Возвращает информацию о пользователе по его ID
-    security:
-      - BearerAuth: 0
-    parameters:
-      - in: path
-        name: user_id
-        required: true
-        schema:
-          type: integer
-        description: ID пользователя
-    responses:
-      200:
-        description: Данные пользователя
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                user:
-                  $ref: '#/components/schemas/User'
-      404:
-        description: Пользователь не найден
-      403:
-        description: Недостаточно прав
-    """
     user = AuthService.get_user_by_id(user_id)
     if not user:
         return jsonify({'message': 'Пользователь не найден'}), 404
 
+    log_admin_action("user_view", f"user_id={user_id}")
     return jsonify({
         'user': UserSchema().dump(user)
     }), 200
@@ -96,54 +43,7 @@ def get_user(user_id: int):
 @jwt_required()
 @admin_required
 def update_user_role(user_id: int):
-    """
-    Изменение роли пользователя (администратор)
 
-    ---
-    tags:
-      - Users
-    summary: Изменить роль пользователя
-    description: Изменяет роль пользователя
-    security:
-      - BearerAuth: 0
-    parameters:
-      - in: path
-        name: user_id
-        required: true
-        schema:
-          type: integer
-        description: ID пользователя
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            required:
-              - role
-            properties:
-              role:
-                type: string
-                enum: [admin, manager, cashier, client]
-                example: manager
-    responses:
-      200:
-        description: Роль успешно обновлена
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                message:
-                  type: string
-                  example: Роль пользователя обновлена
-                user:
-                  $ref: '#/components/schemas/User'
-      404:
-        description: Пользователь не найден
-      403:
-        description: Недостаточно прав
-    """
     data = request.get_json()
     role_str = data.get('role')
 
@@ -156,6 +56,7 @@ def update_user_role(user_id: int):
     if error:
         return jsonify(error), 404
 
+    log_admin_action("user_role_update", f"user_id={user_id}, role={role.value}")
     return jsonify({
         'message': 'Роль пользователя обновлена',
         'user': UserSchema().dump(user)
@@ -166,36 +67,13 @@ def update_user_role(user_id: int):
 @jwt_required()
 @admin_required
 def deactivate_user(user_id: int):
-    """
-    Деактивация пользователя (администратор)
 
-    ---
-    tags:
-      - Users
-    summary: Деактивировать пользователя
-    description: Деактивирует аккаунт пользователя
-    security:
-      - BearerAuth: 0
-    parameters:
-      - in: path
-        name: user_id
-        required: true
-        schema:
-          type: integer
-        description: ID пользователя
-    responses:
-      200:
-        description: Пользователь деактивирован
-      404:
-        description: Пользователь не найден
-      403:
-        description: Недостаточно прав
-    """
     user, error = AuthService.deactivate_user(user_id)
 
     if error:
         return jsonify(error), 404
 
+    log_admin_action("user_deactivate", f"user_id={user_id}")
     return jsonify({
         'message': 'Пользователь деактивирован',
         'user': UserSchema().dump(user)
@@ -206,36 +84,13 @@ def deactivate_user(user_id: int):
 @jwt_required()
 @admin_required
 def activate_user(user_id: int):
-    """
-    Активация пользователя (администратор)
 
-    ---
-    tags:
-      - Users
-    summary: Активировать пользователя
-    description: Активирует аккаунт пользователя
-    security:
-      - BearerAuth: 0
-    parameters:
-      - in: path
-        name: user_id
-        required: true
-        schema:
-          type: integer
-        description: ID пользователя
-    responses:
-      200:
-        description: Пользователь активирован
-      404:
-        description: Пользователь не найден
-      403:
-        description: Недостаточно прав
-    """
     user, error = AuthService.activate_user(user_id)
 
     if error:
         return jsonify(error), 404
 
+    log_admin_action("user_activate", f"user_id={user_id}")
     return jsonify({
         'message': 'Пользователь активирован',
         'user': UserSchema().dump(user)
@@ -246,36 +101,54 @@ def activate_user(user_id: int):
 @jwt_required()
 @admin_required
 def delete_user(user_id: int):
-    """
-    Удаление пользователя (администратор)
+    current_user_id = get_jwt_identity()
+    if current_user_id == user_id:
+        return jsonify({'message': 'Администратор не может удалить свой аккаунт'}), 400
 
-    ---
-    tags:
-      - Users
-    summary: Удалить пользователя
-    description: Удаляет аккаунт пользователя
-    security:
-      - BearerAuth: 0
-    parameters:
-      - in: path
-        name: user_id
-        required: true
-        schema:
-          type: integer
-        description: ID пользователя
-    responses:
-      200:
-        description: Пользователь удалён
-      404:
-        description: Пользователь не найден
-      403:
-        description: Недостаточно прав
-    """
     success, error = AuthService.delete_user(user_id)
 
     if error:
         return jsonify(error), 404
 
+    log_admin_action("user_delete", f"user_id={user_id}")
     return jsonify({
         'message': 'Пользователь удалён'
     }), 200
+
+
+@user_bp.route('/admin-logs', methods=['GET'])
+@jwt_required()
+@admin_required
+def get_admin_logs():
+
+    limit = request.args.get('limit', 200, type=int)
+    limit = max(1, min(limit, 1000))
+    log_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs', 'admin_audit.log')
+
+    if not os.path.exists(log_path):
+        return jsonify({'logs': []}), 200
+
+    with open(log_path, 'r', encoding='utf-8') as log_file:
+        lines = log_file.readlines()
+
+    log_admin_action("admin_logs_view", f"limit={limit}")
+    return jsonify({'logs': [line.rstrip('\n') for line in lines[-limit:]]}), 200
+
+
+@user_bp.route('/activity-logs', methods=['GET'])
+@jwt_required()
+@admin_required
+def get_activity_logs():
+
+    limit = request.args.get('limit', 300, type=int)
+    limit = max(1, min(limit, 2000))
+    log_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs', 'user_activity.log')
+
+    if not os.path.exists(log_path):
+        return jsonify({'logs': []}), 200
+
+    with open(log_path, 'r', encoding='utf-8') as log_file:
+        lines = log_file.readlines()
+
+    log_admin_action("activity_logs_view", f"limit={limit}")
+    return jsonify({'logs': [line.rstrip('\n') for line in lines[-limit:]]}), 200

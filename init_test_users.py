@@ -1,4 +1,4 @@
-"""Скрипт для создания тестовых пользователей."""
+
 
 import sys
 sys.path.insert(0, '.')
@@ -37,52 +37,48 @@ TEST_USERS = [
 
 
 def init_test_users(clean_first: bool = False):
-    """Создаёт тестовых пользователей.
-    
-    Args:
-        clean_first: Если True, сначала удаляет всех пользователей
-    """
+
     app = create_app()
-    
+
     with app.app_context():
         if clean_first:
             print("🧹 Очистка базы данных...")
             deleted_count = User.query.delete()
             db.session.commit()
             print(f"Удалено пользователей: {deleted_count}\n")
-        
+
         created_count = 0
         skipped_count = 0
-        
+
         for user_data in TEST_USERS:
             existing = User.query.filter(
-                (User.email == user_data['email']) | 
+                (User.email == user_data['email']) |
                 (User.username == user_data['username'])
             ).first()
-            
+
             if existing:
                 print(f"⚠️  Пользователь {user_data['username']} уже существует")
                 skipped_count += 1
                 continue
-            
+
             user = User(
                 email=user_data['email'],
                 username=user_data['username'],
                 role=user_data['role']
             )
             user.set_password(user_data['password'])
-            
+
             db.session.add(user)
             created_count += 1
             print(f"✅ Создан пользователь: {user_data['username']} ({user_data['role'].value})")
-        
+
         db.session.commit()
-        
+
         print(f"\n{'='*40}")
         print(f"Создано пользователей: {created_count}")
         print(f"Пропущено: {skipped_count}")
         print(f"{'='*40}\n")
-        
+
         if created_count > 0:
             print("📋 Тестовые данные для входа:\n")
             for user_data in TEST_USERS:

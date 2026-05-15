@@ -3,8 +3,40 @@ import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { authApi, clientApi } from "../../api/endpoints";
 import { tokenStorage } from "../../api/httpClient";
 
-const getErrorMessage = (error, fallback) =>
-  error.response?.data?.message || error.response?.data?.errors || fallback;
+const stringifyValidationError = (value) => {
+  if (!value) {
+    return "";
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => stringifyValidationError(item)).filter(Boolean).join(", ");
+  }
+  if (typeof value === "object") {
+    return Object.entries(value)
+      .map(([field, fieldError]) => {
+        const text = stringifyValidationError(fieldError);
+        return text ? `${field}: ${text}` : "";
+      })
+      .filter(Boolean)
+      .join("; ");
+  }
+  return "";
+};
+
+const getErrorMessage = (error, fallback) => {
+  const payload = error.response?.data;
+  const message = payload?.message;
+  if (typeof message === "string" && message.trim()) {
+    return message.trim();
+  }
+  const validationErrors = stringifyValidationError(payload?.errors);
+  if (validationErrors) {
+    return validationErrors;
+  }
+  return fallback;
+};
 
 export const hydrateSession = createAsyncThunk(
   "user/hydrateSession",
@@ -31,7 +63,7 @@ export const hydrateSession = createAsyncThunk(
 
 export const registerUser = createAsyncThunk(
   "user/registerUser",
-  async ({ email, username, password }, { rejectWithValue }) => {
+  async ({ email, username, password, first_name, last_name, middle_name, phone }, { rejectWithValue }) => {
     try {
       const registerResponse = await authApi.register({
         email,
@@ -47,11 +79,19 @@ export const registerUser = createAsyncThunk(
 
       tokenStorage.setTokens(accessToken, refreshToken);
       const meResponse = await authApi.me();
+      const profileResponse = await clientApi.updateMyProfile({
+        first_name,
+        last_name,
+        middle_name,
+        phone,
+        email
+      });
 
       return {
         accessToken,
         refreshToken,
-        profile: meResponse.data?.user || registerResponse.data?.user || null
+        profile: meResponse.data?.user || registerResponse.data?.user || null,
+        clientProfile: profileResponse.data?.client || null
       };
     } catch (error) {
       return rejectWithValue(getErrorMessage(error, "Не удалось зарегистрироваться"));
@@ -88,7 +128,7 @@ export const logoutUser = createAsyncThunk("user/logoutUser", async () => {
   try {
     await authApi.logout();
   } catch {
-    // Игнорируем ошибку логаута, чистим токены локально в любом случае.
+
   } finally {
     tokenStorage.clear();
   }
@@ -101,6 +141,9 @@ export const fetchMyClientProfile = createAsyncThunk(
       const response = await clientApi.getMyProfile();
       return response.data?.client || null;
     } catch (error) {
+      if (error.response?.status === 404) {
+        return null;
+      }
       return rejectWithValue(getErrorMessage(error, "Профиль клиента не найден"));
     }
   }
@@ -169,6 +212,7 @@ const userSlice = createSlice({
         state.accessToken = action.payload.accessToken;
         state.refreshToken = action.payload.refreshToken;
         state.profile = action.payload.profile;
+        state.clientProfile = action.payload.clientProfile || state.clientProfile;
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.status = "failed";

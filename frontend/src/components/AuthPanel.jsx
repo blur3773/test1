@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { loginUser, logoutUser } from "../features/user/userSlice";
+import { getRoleLabel } from "../utils/roleLabels";
 
 function AuthPanel() {
   const dispatch = useAppDispatch();
@@ -23,7 +24,7 @@ function AuthPanel() {
       <div className="auth-panel auth-panel--logged">
         <div>
           <p className="auth-title">{profile.username}</p>
-          <p className="auth-subtitle">Роль: {profile.role}</p>
+          <p className="auth-subtitle">Роль: {getRoleLabel(profile.role)}</p>
         </div>
         <button
           type="button"

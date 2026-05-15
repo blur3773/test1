@@ -1,4 +1,4 @@
-"""Модели приложения."""
+
 
 from app.models.user import User, UserRole
 from app.models.store import (
@@ -17,14 +17,14 @@ from app.models.store import (
 )
 
 __all__ = [
-    'User', 
+    'User',
     'UserRole',
-    'Book', 
-    'BookStatus', 
-    'BookStock', 
-    'Sale', 
-    'SaleStatus', 
-    'SaleItem', 
+    'Book',
+    'BookStatus',
+    'BookStock',
+    'Sale',
+    'SaleStatus',
+    'SaleItem',
     'Client',
     'Order',
     'OrderStatus',

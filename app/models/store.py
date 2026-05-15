@@ -1,4 +1,4 @@
-"""Модели для книжного магазина."""
+
 
 from datetime import datetime
 from enum import Enum
@@ -6,13 +6,13 @@ from app.extensions import db
 
 
 class BookStatus(Enum):
-    """Статус книги."""
-    ACTIVE = 'active'       # Книга доступна для продажи
-    ARCHIVED = 'archived'   # Книга заархивирована (удалена)
+
+    ACTIVE = 'active'
+    ARCHIVED = 'archived'
 
 
 class Book(db.Model):
-    """Модель книги."""
+
 
     __tablename__ = 'books'
 
@@ -23,14 +23,20 @@ class Book(db.Model):
     isbn = db.Column(db.String(20), unique=True, nullable=False, index=True)
     publisher = db.Column(db.String(100), nullable=True)
     year = db.Column(db.Integer, nullable=True)
+    publication_place = db.Column(db.String(120), nullable=True)
+    page_count = db.Column(db.Integer, nullable=True)
+    weight_grams = db.Column(db.Integer, nullable=True)
+    print_run = db.Column(db.Integer, nullable=True)
+    genre = db.Column(db.String(255), nullable=True)
     price = db.Column(db.Numeric(10, 2), nullable=False)
     description = db.Column(db.Text, nullable=True)
     cover_url = db.Column(db.String(500), nullable=True)
+    source_url = db.Column(db.String(500), nullable=True)
     status = db.Column(db.Enum(BookStatus), default=BookStatus.ACTIVE, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
-    # Связи
+
     stock = db.relationship('BookStock', back_populates='book', uselist=False, cascade='all, delete-orphan')
     sale_items = db.relationship('SaleItem', back_populates='book', cascade='all, delete-orphan')
     order_items = db.relationship('OrderItem', back_populates='book', cascade='all, delete-orphan')
@@ -40,7 +46,7 @@ class Book(db.Model):
 
 
 class BookStock(db.Model):
-    """Модель остатков книг."""
+
 
     __tablename__ = 'book_stocks'
 
@@ -50,12 +56,12 @@ class BookStock(db.Model):
     reserved = db.Column(db.Integer, default=0, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
-    # Связи
+
     book = db.relationship('Book', back_populates='stock')
 
     @property
     def available(self) -> int:
-        """Возвращает количество доступных книг."""
+
         return self.quantity - self.reserved
 
     def __repr__(self):
@@ -63,29 +69,29 @@ class BookStock(db.Model):
 
 
 class SaleStatus(Enum):
-    """Статус продажи."""
-    COMPLETED = 'completed'   # Продажа завершена
-    RETURNED = 'returned'     # Продажа возвращена
-    CANCELLED = 'cancelled'   # Продажа отменена
+
+    COMPLETED = 'completed'
+    RETURNED = 'returned'
+    CANCELLED = 'cancelled'
 
 
 class OrderStatus(Enum):
-    """Статус заказа клиента."""
-    PENDING = 'pending'       # Новый заказ, ожидает обработки менеджером
-    APPROVED = 'approved'     # Заказ одобрен
-    REJECTED = 'rejected'     # Заказ отклонён менеджером
-    CANCELLED = 'cancelled'   # Заказ отменён клиентом/менеджером
-    COMPLETED = 'completed'   # Заказ выполнен и оформлен как продажа
+
+    PENDING = 'pending'
+    APPROVED = 'approved'
+    REJECTED = 'rejected'
+    CANCELLED = 'cancelled'
+    COMPLETED = 'completed'
 
 
 class QuestionStatus(Enum):
-    """Статус вопроса клиента."""
-    NEW = 'new'               # Новый вопрос, ожидает ответа менеджера
-    RESOLVED = 'resolved'     # Вопрос обработан
+
+    NEW = 'new'
+    RESOLVED = 'resolved'
 
 
 class Sale(db.Model):
-    """Модель продажи."""
+
 
     __tablename__ = 'sales'
 
@@ -97,7 +103,7 @@ class Sale(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
-    # Связи
+
     items = db.relationship('SaleItem', back_populates='sale', cascade='all, delete-orphan')
     cashier = db.relationship('User', foreign_keys=[cashier_id])
     client = db.relationship('Client', back_populates='sales')
@@ -107,7 +113,7 @@ class Sale(db.Model):
 
 
 class SaleItem(db.Model):
-    """Модель позиции в продаже."""
+
 
     __tablename__ = 'sale_items'
 
@@ -118,7 +124,7 @@ class SaleItem(db.Model):
     price = db.Column(db.Numeric(10, 2), nullable=False)
     subtotal = db.Column(db.Numeric(10, 2), nullable=False)
 
-    # Связи
+
     sale = db.relationship('Sale', back_populates='items')
     book = db.relationship('Book', back_populates='sale_items')
 
@@ -127,7 +133,7 @@ class SaleItem(db.Model):
 
 
 class Client(db.Model):
-    """Модель клиента."""
+
 
     __tablename__ = 'clients'
 
@@ -141,7 +147,7 @@ class Client(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
-    # Связи
+
     user = db.relationship('User', backref='client_profile')
     sales = db.relationship('Sale', back_populates='client')
     orders = db.relationship('Order', back_populates='client')
@@ -151,7 +157,7 @@ class Client(db.Model):
 
 
 class Order(db.Model):
-    """Модель заказа клиента."""
+
 
     __tablename__ = 'orders'
 
@@ -167,7 +173,7 @@ class Order(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
-    # Связи
+
     items = db.relationship('OrderItem', back_populates='order', cascade='all, delete-orphan')
     user = db.relationship('User', foreign_keys=[user_id])
     manager = db.relationship('User', foreign_keys=[manager_id])
@@ -179,7 +185,7 @@ class Order(db.Model):
 
 
 class OrderItem(db.Model):
-    """Модель позиции в заказе."""
+
 
     __tablename__ = 'order_items'
 
@@ -190,7 +196,7 @@ class OrderItem(db.Model):
     price = db.Column(db.Numeric(10, 2), nullable=False)
     subtotal = db.Column(db.Numeric(10, 2), nullable=False)
 
-    # Связи
+
     order = db.relationship('Order', back_populates='items')
     book = db.relationship('Book', back_populates='order_items')
 
@@ -199,7 +205,7 @@ class OrderItem(db.Model):
 
 
 class ManagerQuestion(db.Model):
-    """Модель вопроса клиента менеджеру."""
+
 
     __tablename__ = 'manager_questions'
 

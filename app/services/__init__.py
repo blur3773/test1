@@ -1,4 +1,4 @@
-"""Сервисы приложения."""
+
 
 from app.services.auth_service import AuthService
 from app.services.book_cover_service import BookCoverService
@@ -11,6 +11,7 @@ from app.services.store_service import (
     QuestionService,
 )
 from app.services.recommendation_service import RecommendationService
+from app.services.book_metadata_service import BookMetadataService
 
 __all__ = [
     'AuthService',
@@ -21,5 +22,6 @@ __all__ = [
     'OrderService',
     'ClientService',
     'QuestionService',
-    'RecommendationService'
+    'RecommendationService',
+    'BookMetadataService'
 ]

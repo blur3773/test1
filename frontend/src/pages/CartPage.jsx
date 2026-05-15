@@ -5,10 +5,13 @@ import {
   clearCart,
   decreaseQuantity,
   increaseQuantity,
+  setQuantity,
   removeFromCart
 } from "../features/cart/cartSlice";
 import { createSale } from "../features/sales/salesSlice";
 import { createOrder } from "../features/orders/ordersSlice";
+
+const MAX_CART_QUANTITY = 99;
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("ru-RU", {
@@ -67,8 +70,19 @@ function CartPage() {
       dispatch(clearCart());
       setLocalMessage("Продажа успешно оформлена.");
     } catch {
-      // Ошибка уже лежит в sales.error
+
     }
+  };
+
+  const onQuantityInputChange = (bookId, value) => {
+    if (value === "") {
+      return;
+    }
+    const parsedValue = Number(value);
+    if (!Number.isFinite(parsedValue)) {
+      return;
+    }
+    dispatch(setQuantity({ bookId, quantity: Math.min(MAX_CART_QUANTITY, parsedValue) }));
   };
 
   return (
@@ -95,7 +109,16 @@ function CartPage() {
                 <button className="button button-secondary" onClick={() => dispatch(decreaseQuantity(item.book.id))}>
                   -
                 </button>
-                <span>{item.quantity}</span>
+                <input
+                  className="input cart-qty-input"
+                  type="number"
+                  min="1"
+                  max={MAX_CART_QUANTITY}
+                  step="1"
+                  inputMode="numeric"
+                  value={item.quantity}
+                  onChange={(event) => onQuantityInputChange(item.book.id, event.target.value)}
+                />
                 <button className="button button-secondary" onClick={() => dispatch(increaseQuantity(item.book.id))}>
                   +
                 </button>

@@ -8,6 +8,8 @@ import { addToCart } from "../features/cart/cartSlice";
 import { fetchPopularBooks } from "../features/recommendations/recommendationsSlice";
 import { isNewBook, isSpringBestBook } from "../utils/bookPromos";
 
+const CATALOG_SEARCH_MAX_LENGTH = 90;
+
 function CatalogPage() {
   const dispatch = useAppDispatch();
   const { items, status, error, filters } = useAppSelector((state) => state.books);
@@ -20,7 +22,7 @@ function CatalogPage() {
     const role = profile?.role;
     const options = [{ value: "active", label: "В продаже" }];
 
-    if (["cashier", "manager", "admin"].includes(role)) {
+    if (["manager", "admin"].includes(role)) {
       options.push({ value: "archived", label: "Архив" });
     }
     if (["manager", "admin"].includes(role)) {
@@ -83,7 +85,7 @@ function CatalogPage() {
         <div className="hero-visual" aria-hidden="true">
           <div className="hero-orb" />
           <article className="hero-book hero-book--main">
-            <span>BookFlow picks</span>
+            <span>Книжная вселенная</span>
             <strong>Весенние бестселлеры</strong>
             <p>Подборка недели для уютных вечеров и поездок</p>
           </article>
@@ -124,7 +126,8 @@ function CatalogPage() {
               type="search"
               placeholder="Поиск по каталогу"
               value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
+              maxLength={CATALOG_SEARCH_MAX_LENGTH}
+              onChange={(event) => setSearchInput(event.target.value.slice(0, CATALOG_SEARCH_MAX_LENGTH))}
             />
             <button className="button mini-submit" type="submit">
               Найти

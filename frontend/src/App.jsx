@@ -10,6 +10,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import ContactsPage from "./pages/ContactsPage";
+import BookDetailsPage from "./pages/BookDetailsPage";
 import { useAppDispatch } from "./app/hooks";
 import { hydrateSession } from "./features/user/userSlice";
 
@@ -31,6 +32,7 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/contacts" element={<ContactsPage />} />
+        <Route path="/books/:bookId" element={<BookDetailsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

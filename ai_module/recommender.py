@@ -1,4 +1,4 @@
-"""ML-рекомендатель книг: ranking + content-based fallback."""
+
 
 from __future__ import annotations
 
@@ -9,16 +9,12 @@ from typing import Any, Dict, List, Optional
 
 try:
     from sklearn.ensemble import GradientBoostingClassifier
-except Exception:  # pragma: no cover - graceful fallback when sklearn is unavailable
+except Exception:
     GradientBoostingClassifier = None
 
 
 class BookRecommender:
-    """
-    Рекомендатель с двумя режимами:
-    1) Ranking-модель (Gradient Boosting) на истории продаж.
-    2) TF-IDF + cosine fallback для cold-start/недостатка данных.
-    """
+
 
     GENRE_KEYWORDS = {
         'фантастика': ['фантастика', 'фэнтези', 'магия', 'волшебник', 'космос', 'будущее'],
@@ -40,12 +36,12 @@ class BookRecommender:
     }
 
     def __init__(self):
-        # TF-IDF состояния
+
         self._idf: Dict[str, float] = {}
         self._book_vectors: Dict[int, Dict[str, float]] = {}
         self._dataset_signature = None
 
-        # Ranking состояния
+
         self._ranking_model = None
         self._ranking_signature = None
         self._ranking_ready = False
@@ -53,9 +49,9 @@ class BookRecommender:
         self._book_popularity: Dict[int, float] = {}
         self._books_by_id: Dict[int, Dict[str, Any]] = {}
 
-    # -------------------------------------------------------------------------
-    # Shared text/feature helpers
-    # -------------------------------------------------------------------------
+
+
+
 
     def _normalize_text(self, text: str) -> str:
         return (text or '').lower().replace('ё', 'е')
@@ -121,9 +117,9 @@ class BookRecommender:
         except (TypeError, ValueError):
             return default
 
-    # -------------------------------------------------------------------------
-    # TF-IDF fallback pipeline
-    # -------------------------------------------------------------------------
+
+
+
 
     def _vectorize_tokens(self, tokens: List[str]) -> Dict[str, float]:
         if not tokens:
@@ -278,20 +274,16 @@ class BookRecommender:
         recommendations.sort(key=lambda x: x['score'], reverse=True)
         return recommendations[:limit]
 
-    # -------------------------------------------------------------------------
-    # Ranking model pipeline (Gradient Boosting)
-    # -------------------------------------------------------------------------
+
+
+
 
     def fit_ranking_model(
         self,
         interactions: List[Dict[str, Any]],
         all_books: List[Dict[str, Any]]
     ) -> bool:
-        """
-        Обучает ranking-модель на истории продаж.
 
-        interactions: [{'client_id': int, 'book_id': int, 'quantity': int}, ...]
-        """
         if GradientBoostingClassifier is None:
             self._ranking_ready = False
             return False
@@ -345,7 +337,7 @@ class BookRecommender:
         if signature == self._ranking_signature and self._ranking_ready and self._ranking_model is not None:
             return True
 
-        # Prepare TF-IDF vectors for semantic feature.
+
         self._fit(list(books_by_id.values()))
 
         max_popularity = max(book_popularity_raw.values()) if book_popularity_raw else 1
@@ -382,7 +374,7 @@ class BookRecommender:
                 y.append(1)
 
             negative_ids = [book_id for book_id in all_book_ids if book_id not in purchased_ids]
-            # Hard negatives: popular yet not bought by this client.
+
             negative_ids.sort(key=lambda b_id: book_popularity.get(b_id, 0.0), reverse=True)
             negative_ids = negative_ids[: max(1, min(len(negative_ids), len(purchased_ids) * 2))]
 
@@ -401,7 +393,7 @@ class BookRecommender:
                 )
                 y.append(0)
 
-        # Для учебных БД данных часто немного, поэтому держим низкий порог.
+
         if len(X) < 6 or len(set(y)) < 2:
             self._ranking_ready = False
             return False
@@ -467,20 +459,20 @@ class BookRecommender:
         candidate_vector = self._book_vectors.get(candidate_id, {})
         semantic_similarity = self._cosine_similarity(profile_vector, candidate_vector)
 
-        # Возвращаем числовой вектор признаков (feature engineering для ranking).
+
         return [
-            candidate_price / 1000.0,                    # нормализованная цена
-            min(1.0, candidate_year / 2100.0),           # нормализованный год
-            popularity_score,                            # популярность книги
-            min(1.0, len(purchased_books) / 25.0),       # насыщенность истории покупок
-            user_avg_price / 1000.0,                     # средний чек пользователя по книгам
-            1.0 - normalized_price_distance,             # близость цены к предпочтениям
-            author_match_ratio,                          # совпадение автора
-            publisher_match_ratio,                       # совпадение издателя
-            genre_match_ratio,                           # совпадение жанров
-            semantic_similarity,                         # TF-IDF семантическая близость
-            1.0 if candidate_id in purchased_counter else 0.0,   # уже покупал
-            purchased_counter.get(candidate_id, 0) / total_purchases,  # частота покупки книги
+            candidate_price / 1000.0,
+            min(1.0, candidate_year / 2100.0),
+            popularity_score,
+            min(1.0, len(purchased_books) / 25.0),
+            user_avg_price / 1000.0,
+            1.0 - normalized_price_distance,
+            author_match_ratio,
+            publisher_match_ratio,
+            genre_match_ratio,
+            semantic_similarity,
+            1.0 if candidate_id in purchased_counter else 0.0,
+            purchased_counter.get(candidate_id, 0) / total_purchases,
         ]
 
     def recommend_by_client_ranking(
@@ -490,7 +482,7 @@ class BookRecommender:
         limit: int = 5,
         exclude_book_ids: Optional[List[int]] = None,
     ) -> List[Dict[str, Any]]:
-        """Возвращает top-N рекомендаций по ranking-модели."""
+
         if not self._ranking_ready or self._ranking_model is None:
             return []
 
@@ -543,9 +535,9 @@ class BookRecommender:
         recommendations.sort(key=lambda item: item['score'], reverse=True)
         return recommendations[:limit]
 
-    # -------------------------------------------------------------------------
-    # Public API used by service layer
-    # -------------------------------------------------------------------------
+
+
+
 
     def recommend_by_cart(
         self,
@@ -553,7 +545,7 @@ class BookRecommender:
         all_books: List[Dict[str, Any]],
         limit: int = 5
     ) -> List[Dict[str, Any]]:
-        # Для анонимной корзины используем content-based fallback.
+
         return self._tfidf_recommend_by_cart(cart_books=cart_books, all_books=all_books, limit=limit)
 
     def recommend_by_history(
@@ -579,10 +571,7 @@ class BookRecommender:
         cart_books: List[Dict[str, Any]],
         all_books: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
-        """
-        Дополнение комплектов оставлено эвристическим:
-        задача здесь не ранжирование, а поиск связанных серий.
-        """
+
         recommendations = []
 
         for set_name, set_books in self.BOOK_SETS.items():
