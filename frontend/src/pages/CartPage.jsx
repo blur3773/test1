@@ -57,7 +57,7 @@ function CartPage() {
       if (isClient) {
         await dispatch(createOrder({ items: payload })).unwrap();
         dispatch(clearCart());
-        setLocalMessage("Заказ передан менеджеру на обработку.");
+        setLocalMessage("Заказ передан менеджеру. Статус и историю покупок можно смотреть в профиле.");
         return;
       }
 

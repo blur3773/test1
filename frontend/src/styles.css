@@ -1015,6 +1015,10 @@ a {
   padding: 0.72rem;
 }
 
+.order-card--client {
+  background: #fffdf8;
+}
+
 .question-card {
   border: 1px solid #ececec;
   border-radius: 0.72rem;
@@ -1107,6 +1111,107 @@ a {
   color: #7c7c7c;
 }
 
+.order-status-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.65rem;
+  border-radius: 999px;
+  border: 1px solid #d8d8d8;
+  background: #ffffff;
+  color: #555555;
+  padding: 0.24rem 0.58rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.order-status-chip--pending,
+.order-status-chip--approved {
+  border-color: #b7a24f;
+  background: #fff1ae;
+  color: #665618;
+}
+
+.order-status-chip--completed {
+  border-color: #79b78c;
+  background: #e4f6e9;
+  color: #2f7044;
+}
+
+.order-status-chip--rejected,
+.order-status-chip--cancelled {
+  border-color: #e0a0a0;
+  background: #fff0f0;
+  color: #9a3d3d;
+}
+
+.order-progress {
+  margin-top: 0.75rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.order-progress__track {
+  position: relative;
+  height: 0.44rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e4e4e4;
+}
+
+.order-progress__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: #d3a92d;
+}
+
+.order-progress--success .order-progress__fill {
+  background: #3b9a59;
+}
+
+.order-progress--danger .order-progress__fill {
+  background: #c84d4d;
+}
+
+.order-progress--muted .order-progress__fill {
+  background: #858585;
+}
+
+.order-progress__steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.42rem;
+}
+
+.order-progress__step {
+  display: grid;
+  justify-items: center;
+  gap: 0.22rem;
+  color: #777777;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.25;
+}
+
+.order-progress__step.is-active {
+  color: #242424;
+}
+
+.order-progress__dot {
+  width: 0.64rem;
+  height: 0.64rem;
+  border-radius: 999px;
+  border: 2px solid #c9c9c9;
+  background: #ffffff;
+}
+
+.order-progress__step.is-active .order-progress__dot {
+  border-color: currentColor;
+  background: currentColor;
+}
+
 .order-items {
   margin-top: 0.55rem;
   display: grid;
@@ -1136,6 +1241,41 @@ a {
 .order-actions .button {
   min-height: auto;
   padding: 0.44rem 0.76rem;
+}
+
+.client-orders-panel {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.orders-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--line);
+  padding-top: 0.85rem;
+}
+
+.orders-section-header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.orders-section-header--compact {
+  margin-top: 0.15rem;
+}
+
+.purchase-card {
+  background: #fbfbfb;
+}
+
+.purchase-history .order-card__head span {
+  color: #2f7044;
+  font-size: 0.82rem;
+  font-weight: 800;
 }
 
 .cart-item,

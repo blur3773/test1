@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Приложение Книжный магазин
   app:
@@ -26,6 +24,23 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+  # Frontend React + Vite
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bookstore_frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_PROXY_TARGET=http://app:5001
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - bookstore_network
 
   # PostgreSQL (опционально, для продакшена)
   # Раскомментируйте для использования PostgreSQL вместо SQLite

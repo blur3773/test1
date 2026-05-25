@@ -20,6 +20,18 @@ export const createOrder = createAsyncThunk(
   }
 );
 
+export const fetchMyOrders = createAsyncThunk(
+  "orders/fetchMyOrders",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await ordersApi.getMy();
+      return response.data?.orders || [];
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error, "Не удалось загрузить ваши заказы"));
+    }
+  }
+);
+
 export const fetchPendingOrders = createAsyncThunk(
   "orders/fetchPendingOrders",
   async (_, { rejectWithValue }) => {
@@ -60,12 +72,23 @@ export const rejectOrder = createAsyncThunk(
   }
 );
 
+const upsertOrder = (orders, nextOrder) => {
+  if (!nextOrder?.id) {
+    return orders;
+  }
+
+  return [nextOrder, ...orders.filter((order) => order.id !== nextOrder.id)];
+};
+
 const ordersSlice = createSlice({
   name: "orders",
   initialState: {
     lastOrder: null,
     checkoutStatus: "idle",
     checkoutError: null,
+    myOrders: [],
+    myOrdersStatus: "idle",
+    myOrdersError: null,
     managerOrders: [],
     managerOrdersStatus: "idle",
     managerOrdersError: null,
@@ -88,10 +111,23 @@ const ordersSlice = createSlice({
       .addCase(createOrder.fulfilled, (state, action) => {
         state.checkoutStatus = "succeeded";
         state.lastOrder = action.payload;
+        state.myOrders = upsertOrder(state.myOrders, action.payload);
       })
       .addCase(createOrder.rejected, (state, action) => {
         state.checkoutStatus = "failed";
         state.checkoutError = action.payload || "Ошибка оформления заказа";
+      })
+      .addCase(fetchMyOrders.pending, (state) => {
+        state.myOrdersStatus = "loading";
+        state.myOrdersError = null;
+      })
+      .addCase(fetchMyOrders.fulfilled, (state, action) => {
+        state.myOrdersStatus = "succeeded";
+        state.myOrders = action.payload;
+      })
+      .addCase(fetchMyOrders.rejected, (state, action) => {
+        state.myOrdersStatus = "failed";
+        state.myOrdersError = action.payload || "Ошибка загрузки заказов";
       })
       .addCase(fetchPendingOrders.pending, (state) => {
         state.managerOrdersStatus = "loading";
