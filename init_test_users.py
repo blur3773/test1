@@ -1,5 +1,6 @@
 
-
+import os
+import secrets
 import sys
 sys.path.insert(0, '.')
 
@@ -8,37 +9,35 @@ from app.models.user import User, UserRole
 from app.extensions import db
 
 
-TEST_USERS = [
-    {
-        'email': 'admin@bookstore.com',
-        'username': 'admin',
-        'password': 'Admin123!',
-        'role': UserRole.ADMIN
-    },
-    {
-        'email': 'manager@bookstore.com',
-        'username': 'manager',
-        'password': 'Manager123!',
-        'role': UserRole.MANAGER
-    },
-    {
-        'email': 'cashier@bookstore.com',
-        'username': 'cashier',
-        'password': 'Cashier123!',
-        'role': UserRole.CASHIER
-    },
-    {
-        'email': 'client@example.com',
-        'username': 'client_user',
-        'password': 'Client123!',
-        'role': UserRole.CLIENT
-    },
+USER_CONFIG = [
+    ('ADMIN', 'admin', UserRole.ADMIN),
+    ('MANAGER', 'manager', UserRole.MANAGER),
+    ('CASHIER', 'cashier', UserRole.CASHIER),
+    ('CLIENT', 'client_user', UserRole.CLIENT),
 ]
+
+
+def _default_email(prefix: str) -> str:
+    return f"{prefix.lower()}@bookstore.local"
+
+
+def _build_test_users() -> list[dict]:
+    users = []
+    for env_prefix, username, role in USER_CONFIG:
+        users.append({
+            'email': os.environ.get(f'{env_prefix}_EMAIL', _default_email(env_prefix)),
+            'username': os.environ.get(f'{env_prefix}_USERNAME', username),
+            'password': os.environ.get(f'{env_prefix}_PASSWORD') or secrets.token_urlsafe(18),
+            'role': role,
+            'password_from_env': bool(os.environ.get(f'{env_prefix}_PASSWORD')),
+        })
+    return users
 
 
 def init_test_users(clean_first: bool = False):
 
     app = create_app()
+    test_users = _build_test_users()
 
     with app.app_context():
         if clean_first:
@@ -50,7 +49,7 @@ def init_test_users(clean_first: bool = False):
         created_count = 0
         skipped_count = 0
 
-        for user_data in TEST_USERS:
+        for user_data in test_users:
             existing = User.query.filter(
                 (User.email == user_data['email']) |
                 (User.username == user_data['username'])
@@ -80,9 +79,11 @@ def init_test_users(clean_first: bool = False):
         print(f"{'='*40}\n")
 
         if created_count > 0:
-            print("📋 Тестовые данные для входа:\n")
-            for user_data in TEST_USERS:
-                print(f"  {user_data['role'].value.upper():10} | Email: {user_data['email']:25} | Пароль: {user_data['password']}")
+            print("📋 Локальные тестовые данные для входа:\n")
+            for user_data in test_users:
+                password_note = "из переменной окружения" if user_data['password_from_env'] else user_data['password']
+                print(f"  {user_data['role'].value.upper():10} | Email: {user_data['email']:25} | Пароль: {password_note}")
+            print("\nДля постоянных локальных паролей задайте *_PASSWORD в .env или окружении.")
 
 
 if __name__ == '__main__':

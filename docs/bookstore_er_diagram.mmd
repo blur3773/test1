@@ -1,0 +1,115 @@
+erDiagram
+    USERS ||--o| CLIENTS : "profile"
+    USERS ||--o{ ORDERS : "buyer"
+    USERS ||--o{ ORDERS : "manager"
+    CLIENTS ||--o{ ORDERS : "places"
+    ORDERS ||--|{ ORDER_ITEMS : "contains"
+    BOOKS ||--o{ ORDER_ITEMS : "ordered"
+    BOOKS ||--|| BOOK_STOCKS : "has stock"
+    ORDERS o|--o| SALES : "creates sale"
+    USERS ||--o{ SALES : "cashier"
+    CLIENTS ||--o{ SALES : "buyer"
+    SALES ||--|{ SALE_ITEMS : "contains"
+    BOOKS ||--o{ SALE_ITEMS : "sold"
+    USERS ||--o{ MANAGER_QUESTIONS : "asks"
+    USERS ||--o{ MANAGER_QUESTIONS : "answers"
+
+    USERS {
+        int id PK
+        string email UK
+        string username UK
+        string password_hash
+        enum role
+        bool is_active
+        bool is_verified
+        datetime created_at
+        datetime updated_at
+    }
+
+    CLIENTS {
+        int id PK
+        int user_id FK_UK
+        string first_name
+        string last_name
+        string phone
+        string email
+        datetime created_at
+        datetime updated_at
+    }
+
+    BOOKS {
+        int id PK
+        string title
+        string title_ru
+        string author
+        string isbn UK
+        string publisher
+        int year
+        string genre
+        decimal price
+        enum status
+        string cover_url
+        string source_url
+    }
+
+    BOOK_STOCKS {
+        int id PK
+        int book_id FK_UK
+        int quantity
+        int reserved
+        int available
+        datetime updated_at
+    }
+
+    ORDERS {
+        int id PK
+        int user_id FK
+        int client_id FK
+        int manager_id FK
+        int sale_id FK_UK
+        decimal total_amount
+        enum status
+        text customer_comment
+        text manager_comment
+    }
+
+    ORDER_ITEMS {
+        int id PK
+        int order_id FK
+        int book_id FK
+        int quantity
+        decimal price
+        decimal subtotal
+    }
+
+    SALES {
+        int id PK
+        int cashier_id FK
+        int client_id FK
+        decimal total_amount
+        enum status
+        datetime created_at
+        datetime updated_at
+    }
+
+    SALE_ITEMS {
+        int id PK
+        int sale_id FK
+        int book_id FK
+        int quantity
+        decimal price
+        decimal subtotal
+    }
+
+    MANAGER_QUESTIONS {
+        int id PK
+        int user_id FK
+        int manager_id FK
+        string name
+        string email
+        string phone
+        string topic
+        text message
+        enum status
+        text manager_comment
+    }

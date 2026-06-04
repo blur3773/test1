@@ -55,9 +55,9 @@ POST http://localhost:5001/api/auth/register
 Content-Type: application/json
 
 {
-  "email": "admin@store.com",
+  "email": "<ADMIN_EMAIL>",
   "username": "admin",
-  "password": "admin123456",
+  "password": "<ADMIN_PASSWORD>",
   "role": "admin"
 }
 ```
@@ -69,8 +69,8 @@ POST http://localhost:5001/api/auth/login
 Content-Type: application/json
 
 {
-  "email": "admin@store.com",
-  "password": "admin123456"
+  "email": "<ADMIN_EMAIL>",
+  "password": "<ADMIN_PASSWORD>"
 }
 ```
 
@@ -82,6 +82,9 @@ Content-Type: application/json
   "message": "Вход выполнен успешно"
 }
 ```
+
+Для локальных тестовых учетных записей используйте переменные окружения из `.env.example`
+и скрипт `init_test_users.py`. Пароли не должны храниться в README или исходном коде.
 
 ---
 

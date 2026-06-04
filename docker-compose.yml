@@ -10,7 +10,7 @@ services:
     environment:
       - FLASK_ENV=production
       - DATABASE_URL=sqlite:///flask_auth.db
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-super-secret-key-change-in-production}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-}
       - HOST=0.0.0.0
       - PORT=5001
     volumes:

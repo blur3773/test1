@@ -149,17 +149,17 @@ def _swagger_paths() -> dict:
         'type': 'object',
         'required': ['email', 'password'],
         'properties': {
-            'email': {'type': 'string', 'format': 'email', 'example': 'admin@bookstore.com'},
-            'password': {'type': 'string', 'example': 'Admin123!'},
+            'email': {'type': 'string', 'format': 'email', 'example': '<ADMIN_EMAIL>'},
+            'password': {'type': 'string', 'example': '<ADMIN_PASSWORD>'},
         },
     }
     register_schema = {
         'type': 'object',
         'required': ['email', 'username', 'password'],
         'properties': {
-            'email': {'type': 'string', 'format': 'email', 'example': 'client@example.com'},
+            'email': {'type': 'string', 'format': 'email', 'example': '<USER_EMAIL>'},
             'username': {'type': 'string', 'example': 'client_user'},
-            'password': {'type': 'string', 'example': 'Client123!'},
+            'password': {'type': 'string', 'example': '<USER_PASSWORD>'},
             'role': {'type': 'string', 'example': 'client'},
         },
     }
@@ -211,8 +211,29 @@ def _swagger_paths() -> dict:
             'last_name': {'type': 'string', 'example': 'Смирнов'},
             'middle_name': {'type': 'string', 'nullable': True},
             'phone': {'type': 'string', 'example': '+7 (999) 123-45-67'},
-            'email': {'type': 'string', 'format': 'email', 'example': 'client@example.com'},
+            'email': {'type': 'string', 'format': 'email', 'example': '<CLIENT_EMAIL>'},
             'user_id': {'type': 'integer', 'nullable': True, 'example': 4},
+        },
+    }
+    user_role_schema = {
+        'type': 'object',
+        'required': ['role'],
+        'properties': {
+            'role': {
+                'type': 'string',
+                'enum': ['admin', 'manager', 'cashier', 'client'],
+                'example': 'manager',
+            },
+        },
+    }
+    logs_response_schema = {
+        'type': 'object',
+        'properties': {
+            'logs': {
+                'type': 'array',
+                'items': {'type': 'string'},
+                'example': ['2026-05-30 12:00:00 | INFO | action=user_view'],
+            },
         },
     }
 
@@ -231,6 +252,28 @@ def _swagger_paths() -> dict:
         },
         '/api/auth/logout': {
             'post': operation('Authentication', 'Выход пользователя', security=True)
+        },
+        '/api/users': {
+            'get': operation('Users', 'Список пользователей', security=True, responses={'200': response('Список пользователей')})
+        },
+        '/api/users/{user_id}': {
+            'get': operation('Users', 'Данные пользователя', security=True, parameters=[path_param('user_id', 'ID пользователя')], responses={'200': response('Пользователь', '#/components/schemas/User'), '404': response('Пользователь не найден')}),
+            'delete': operation('Users', 'Удалить пользователя', security=True, parameters=[path_param('user_id', 'ID пользователя')], responses={'200': response('Пользователь удалён'), '400': response('Нельзя удалить свой аккаунт'), '404': response('Пользователь не найден')}),
+        },
+        '/api/users/{user_id}/role': {
+            'put': operation('Users', 'Изменить роль пользователя', security=True, parameters=[path_param('user_id', 'ID пользователя')], request_schema=user_role_schema, responses={'200': response('Роль обновлена'), '400': response('Некорректная роль'), '404': response('Пользователь не найден')})
+        },
+        '/api/users/{user_id}/deactivate': {
+            'post': operation('Users', 'Деактивировать пользователя', security=True, parameters=[path_param('user_id', 'ID пользователя')], responses={'200': response('Пользователь деактивирован'), '404': response('Пользователь не найден')})
+        },
+        '/api/users/{user_id}/activate': {
+            'post': operation('Users', 'Активировать пользователя', security=True, parameters=[path_param('user_id', 'ID пользователя')], responses={'200': response('Пользователь активирован'), '404': response('Пользователь не найден')})
+        },
+        '/api/users/admin-logs': {
+            'get': operation('Users', 'Журнал действий администраторов', security=True, parameters=[query_param('limit', 'Количество последних строк журнала', 200)], responses={'200': {'description': 'Строки журнала', 'content': {'application/json': {'schema': logs_response_schema}}}})
+        },
+        '/api/users/activity-logs': {
+            'get': operation('Users', 'Журнал активности пользователей', security=True, parameters=[query_param('limit', 'Количество последних строк журнала', 300)], responses={'200': {'description': 'Строки журнала', 'content': {'application/json': {'schema': logs_response_schema}}}})
         },
         '/api/books': {
             'get': operation('Books', 'Список книг', parameters=[query_param('status', 'active, archived или all', 'active')], responses={'200': response('Список книг')}),
@@ -515,7 +558,7 @@ def create_app(config_name='development'):
                         'last_name': {'type': 'string', 'example': 'Смирнов'},
                         'middle_name': {'type': 'string', 'example': 'Иванович'},
                         'phone': {'type': 'string', 'example': '+7 (999) 123-45-67'},
-                        'email': {'type': 'string', 'format': 'email', 'example': 'client@example.com'},
+                        'email': {'type': 'string', 'format': 'email', 'example': '<CLIENT_EMAIL>'},
                         'created_at': {'type': 'string', 'format': 'date-time'},
                         'updated_at': {'type': 'string', 'format': 'date-time'}
                     }
